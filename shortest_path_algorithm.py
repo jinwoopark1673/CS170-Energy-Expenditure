@@ -23,7 +23,7 @@ def revisedDjikstra(adjacency_matrix, source, dist, num_of_locations):
     unVisited = set()
     for i in range(num_of_locations):
         if (dist[i] == 0 and i != source):
-            dist[i] = 1000
+            dist[i] = 3 * 10 ** 11
         unVisited.add(i)
     while (len(unVisited) != 0):
         current = getArgminDist(dist, unVisited)
@@ -39,7 +39,7 @@ def getAdjacentUnvisited(current, adjacency_matrix, unVisited):
     return [i for i in unVisited if adjacency_matrix[current, i] > 0]
 
 def getArgminDist(dist, unVisited):
-    minValue = 1000
+    minValue = 3 * 10 ** 11
     minIndex = 0
     for s in unVisited:
         minIndex = s
