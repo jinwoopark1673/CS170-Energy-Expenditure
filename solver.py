@@ -4,14 +4,23 @@ sys.path.append('..')
 sys.path.append('../..')
 import argparse
 import utils
-from shortest_path_algorithm import *
 
+from shortest_path_algorithm import *
 from student_utils import *
+from approximate_TSP import *
+from student_utils import *
+import random
 """
 ======================================================================
   Complete the following function.
 ======================================================================
 """
+
+def getIndices(list_of_locations, list_of_homes, starting_car_location):
+    homes = []
+    for home in list_of_homes:
+        homes += [list_of_locations.index(home)]
+    return homes, list_of_locations.index(starting_car_location)
 
 def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_matrix, params=[]):
     """
@@ -25,9 +34,67 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
         A list of locations representing the car path
         A list of (location, [homes]) representing drop-offs
     """
-    shortestPath = getShortestDistanceMatrix(adjacency_matrix, len(list_of_homes))
-    pass
+    adjacency_matrix = np.array(adjacency_matrix)
+    adjacency_matrix[adjacency_matrix=='x'] = -1
+    adjacency_matrix = adjacency_matrix.astype(np.float)
+    # getIndices is a helper function in solver.py
+    homes, start = getIndices(list_of_locations, list_of_homes, starting_car_location)
+    # getShortestDistanceMatrix is a helper function in shortest_path_algorithm.py
+    shortestPath = getShortestDistanceMatrix(adjacency_matrix, len(list_of_locations))
+    initDropOff = set(random.sample(range(0, len(list_of_locations)), len(list_of_homes)))
 
+    # runDescent1 is a helper function in solver.py
+    getOptimalDropOff = runDescent1(homes, start, shortestPath, initDropOff)
+    # getTSP is a helper function in approximate_TSP.py
+    generatePath, cost = getTSP(shortestPath, getOptimalDropOff, start, homes)
+
+    path = [generatePath[0]]
+    for i in range(len(generatePath) - 1):
+        path += getShortestPathBetween(adjacency_matrix, generatePath[i], generatePath[i + 1])[1:]
+    return path, getDropOffs(shortestPath, getOptimalDropOff, homes, list_of_locations)
+
+def getDropOffs(shortest_path, optimal_drop_off, homes, list_of_locations):
+    dictionary = {i:set() for i in optimal_drop_off}
+    for home in homes:
+        minimum = 3 * 10 ** 11
+        target = 0
+        for drop in optimal_drop_off:
+            if (shortest_path[drop][home] < minimum):
+                minimum = shortest_path[drop][home]
+                target = drop
+        dictionary[target].add(home)
+    return dictionary
+
+def runDescent1(homes, starting_location, shortest_path, initial_set):
+    result = set(initial_set)
+    isOver = False
+    counter = 0
+    total = set(range(0, len(shortest_path)))
+    _, currCost = getTSP(shortest_path, result, starting_location, homes)
+    while (not isOver and counter < 500):
+        isOver = True
+        for drop in result:
+            result.remove(drop)
+            _, cost = getTSP(shortest_path, result, starting_location, homes)
+            if (cost < currCost):
+                isOver = False
+                currCost = cost
+                break;
+            else:
+                result.add(drop)
+        if len(result) < len(homes):
+            setminus = total.difference(result)
+            for toAdd in setminus:
+                result.add(toAdd)
+                _, cost = getTSP(shortest_path, result, starting_location, homes)
+                if (cost < currCost):
+                    isOver = False
+                    currCost = cost
+                    break;
+                else:
+                    result.remove(toAdd)
+        counter += 1
+    return result
 
 """
 ======================================================================
