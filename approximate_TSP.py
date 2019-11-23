@@ -47,6 +47,7 @@ def computeCost(shortest_path, cycle, homes, drop_locations):
     result = 0
     for i in range(len(cycle) - 1):
         result += shortest_path[cycle[i]][cycle[i + 1]]
+    result = result * 2/3
     for home in homes:
         minimum = 3 * 10 ** 11
         for drop in drop_locations:
