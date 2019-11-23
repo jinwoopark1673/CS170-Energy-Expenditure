@@ -98,10 +98,16 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
         print("Iteration number: " + str(counter))
         print("Descent counter: " + str(descentCounter))
 
+    finalDictionary = getDropOffs(shortestPath, finalDropOff, homes, list_of_locations)
+    """
+    for key in finalDictionary.keys():
+        if (len(finalDictionary[key]) == 0):
+            finalDictionary.pop(key, None)
+    """
     path = [finalPath[0]]
     for i in range(len(finalPath) - 1):
         path += getShortestPathBetween(adjacency_matrix, finalPath[i], finalPath[i + 1])[1:]
-    return path, getDropOffs(shortestPath, finalDropOff, homes, list_of_locations)
+    return path, finalDictionary
 
 def getIndices(list_of_locations, list_of_homes, starting_car_location):
     """
@@ -159,7 +165,7 @@ def runDescent1(homes, starting_location, shortest_path, initial_set, num_iterat
             for toAdd in setminus:
                 result.add(toAdd)
                 _, cost = getTSP(shortest_path, result, starting_location, homes)
-                if (cost < currCost):
+                if (cost <= currCost):
                     isOver = False
                     currCost = cost
                     descentCounter += 1
@@ -199,7 +205,7 @@ def runDescent12Mix(homes, starting_location, shortest_path, initial_set, num_it
             for toAdd in setminus:
                 result.add(toAdd)
                 _, cost = getTSP(shortest_path, result, starting_location, homes)
-                if (cost < currCost):
+                if (cost <= currCost):
                     isOver = False
                     currCost = cost
                     descentCounter += 1
@@ -280,7 +286,7 @@ def runDescent2(homes, starting_location, shortest_path, initial_set, num_iterat
             for toAdd in setminus:
                 result.add(toAdd)
                 _, cost = getTSP(shortest_path, result, starting_location, homes)
-                if (cost < currCost):
+                if (cost <= currCost):
                     isOver = False
                     currCost = cost
                     descentCounter += 1
@@ -326,10 +332,9 @@ def solve_from_file(input_file, output_directory, params=[]):
     car_path, drop_offs = solve(list_locations, list_houses, starting_car_location, adjacency_matrix, params=params)
 
     basename, filename = os.path.split(input_file)
-    output_filename = utils.input_to_output(filename)
-    output_file = f'{output_directory}/{output_filename}'
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
+    output_file = utils.input_to_output(input_file, output_directory)
 
     convertToFile(car_path, drop_offs, output_file, list_locations)
 
