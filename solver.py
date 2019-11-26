@@ -8,7 +8,6 @@ import utils
 from shortest_path_algorithm import *
 from student_utils import *
 from approximate_TSP import *
-from student_utils import *
 import random
 """
 ======================================================================

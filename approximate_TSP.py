@@ -5,7 +5,7 @@ initial_location is the index of the starting point
 homes is a set of indices of TA homes
 """
 def getTSPfast(shortest_path, drop_locations, initial_location, homes):
-    cycle = nearestNN(shortest_path, drop_locations, initial_location)
+    #cycle = nearestNN(shortest_path, drop_locations, initial_location)
     cycle = opt2Exchange(shortest_path, nearestNN(shortest_path, drop_locations, initial_location))
     return cycle, computeCost(shortest_path, cycle, homes, drop_locations)
 
