@@ -4,18 +4,23 @@ drop_locations is a list of indices of drop locations
 initial_location is the index of the starting point
 homes is a set of indices of TA homes
 """
-def getTSP(shortest_path, drop_locations, initial_location, homes):
+def getTSPfast(shortest_path, drop_locations, initial_location, homes):
     cycle = nearestNN(shortest_path, drop_locations, initial_location)
-    #cycle = opt2Exchange(shortest_path, nearestNN(shortest_path, drop_locations, initial_location))
+    cycle = opt2Exchange(shortest_path, nearestNN(shortest_path, drop_locations, initial_location))
     return cycle, computeCost(shortest_path, cycle, homes, drop_locations)
 
+def getTSPslow(shortest_path, drop_locations, initial_location, homes):
+    return None
+
 def nearestNN(shortest_path, drop_locations, initial_location):
+    if ((len(drop_locations) == 1) and initial_location in drop_locations):
+        return [initial_location]
     result = [initial_location]
     history = set(drop_locations)
     current = initial_location
     history.discard(current)
     while (len(history) > 0):
-        minimum = 3 * 10 ** 11
+        minimum = 3 * 10 ** 15
         argmin = 0
         for vertex in history:
             if (minimum > shortest_path[current][vertex]):
@@ -49,7 +54,7 @@ def computeCost(shortest_path, cycle, homes, drop_locations):
         result += shortest_path[cycle[i]][cycle[i + 1]]
     result = result * 2/3
     for home in homes:
-        minimum = 3 * 10 ** 11
+        minimum = 3 * 10 ** 15
         for drop in drop_locations:
             if (shortest_path[drop][home] < minimum):
                 minimum = shortest_path[drop][home]

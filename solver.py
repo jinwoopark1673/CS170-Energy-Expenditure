@@ -16,6 +16,12 @@ import random
 ======================================================================
 """
 
+def getCandidates(adjacency_matrix, shortest_path, homes, start):
+    candidates = []
+    candidates += [set(homes)]
+    # TODO
+    return candidates
+
 def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_matrix, params=[]):
     """
     Write your algorithm here.
@@ -28,7 +34,7 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
         A list of locations representing the car path
         A list of (location, [homes]) representing drop-offs
     """
-    # matrix to index form
+    # matrix to index form where invalid edge has weight -1
     adjacency_matrix = np.array(adjacency_matrix)
     adjacency_matrix[adjacency_matrix=='x'] = -1
     adjacency_matrix = adjacency_matrix.astype(np.float)
@@ -37,77 +43,49 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     # getShortestDistanceMatrix is a helper function in shortest_path_algorithm.py
     shortestPath = getShortestDistanceMatrix(adjacency_matrix, len(list_of_locations))
 
-    dropOffCandidates = []
-    dropOffCandidates += [set(homes)]
-    dropOffCandidates += [set([start])]
+    dropOffCandidates = getCandidates(adjacency_matrix, shortestPath, homes, start)
 
-    minimum = 3 * 10 ** 11
+    minimum = 3 * 10 ** 15
     finalPath = []
     finalDropOff = set()
 
-    # Run Descent2 on candidates if we have 50.in or 100.in
-    if (len(list_of_locations) <= 100):
-        for candidate in dropOffCandidates:
-            # runDescent2 is a helper function in solver.py
-            getOptimalDropOff, counter, descentCounter = runDescent2(homes, start, shortestPath, candidate, 3000)
-            # getTSP is a helper function in approximate_TSP.py
-            generatePath, cost = getTSP(shortestPath, getOptimalDropOff, start, homes)
-            print(cost)
-            if (cost < minimum):
-                minimum = cost
-                finalPath = generatePath
-                finalDropOff = getOptimalDropOff
-            print("Iteration done Descent2")
-            print("Iteration number: " + str(counter))
-            print("Descent counter: " + str(descentCounter))
-        dropOffCandidates += [set(finalDropOff)]
+    """
+    Descent2 takes very long time for 200.in case.
+    Descent1 is pretty fast for all three input types.
+    """
+    if (len(list_of_locations) <= 100): # Descent2
+        finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent2, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
 
-    # Run Descent12Mix on candidates
-    switched = False
-    for candidate in dropOffCandidates: # Descent12Mix
-        # runDescent12Mix is a helper function in solver.py
-        getOptimalDropOff, counter, descentCounter = runDescent12Mix(homes, start, shortestPath, candidate, 3000)
-        # getTSP is a helper function in approximate_TSP.py
-        generatePath, cost = getTSP(shortestPath, getOptimalDropOff, start, homes)
-        print(cost)
-        if (cost < minimum):
-            minimum = cost
-            finalPath = generatePath
-            finalDropOff = getOptimalDropOff
-            switched = True
-        print("Iteration done runDescent12Mix")
-        print("Iteration number: " + str(counter))
-        print("Descent counter: " + str(descentCounter))
-    if (switched):
-        dropOffCandidates += [set(finalDropOff)]
+    if (len(list_of_locations) <= 100): # Descent12Mix
+        finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent12Mix, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
 
-    # Run Descent1 on candidates plus two randomly generated drop-off locations
-    dropOffCandidates += [set(random.sample(range(0, len(list_of_locations)), len(list_of_homes)))]
-    dropOffCandidates += [set(random.sample(range(0, len(list_of_locations)), len(list_of_homes)))]
-    for candidate in dropOffCandidates: # Descent1
-        # runDescent1 is a helper function in solver.py
-        getOptimalDropOff, counter, descentCounter = runDescent1(homes, start, shortestPath, candidate, 3000)
-        # getTSP is a helper function in approximate_TSP.py
-        generatePath, cost = getTSP(shortestPath, getOptimalDropOff, start, homes)
-        print(cost)
-        if (cost < minimum):
-            minimum = cost
-            finalPath = generatePath
-            finalDropOff = getOptimalDropOff
-        print("Iteration done runDescent1")
-        print("Iteration number: " + str(counter))
-        print("Descent counter: " + str(descentCounter))
+    if (len(list_of_locations) <= 1000): # Descent1
+        finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent1, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
 
     finalDictionary = getDropOffs(shortestPath, finalDropOff, homes, list_of_locations)
-    """
-    for key in finalDictionary.keys():
+
+    # Get rid of drop off locations with 0 TA
+    keySet = set(finalDictionary.keys())
+    for key in keySet:
         if (len(finalDictionary[key]) == 0):
             finalDictionary.pop(key, None)
-    """
+
     path = [finalPath[0]]
     for i in range(len(finalPath) - 1):
         path += getShortestPathBetween(adjacency_matrix, finalPath[i], finalPath[i + 1])[1:]
     return path, finalDictionary
+
+def runDescent(candidates, descent_function, homes, start, shortestPath, minimum, optimalPath, optimalDropOff, num_iterations):
+    for candidate in candidates:
+        getOptimalDropOff, counter, descentCounter = descent_function(homes, start, shortestPath, candidate, 3000)
+        generatePath, cost = getTSPfast(shortestPath, getOptimalDropOff, start, homes)
+        # TODO
+        # generatePath, cost = getTSPslow(shortestPath, getOptimalDropOff, start, homes)
+        if (cost < minimum):
+            minimum = cost
+            optimalPath = generatePath
+            optimalDropOff = getOptimalDropOff
+    return optimalDropOff, optimalPath, minimum
 
 def getIndices(list_of_locations, list_of_homes, starting_car_location):
     """
@@ -126,7 +104,7 @@ def getDropOffs(shortest_path, optimal_drop_off, homes, list_of_locations):
     """
     dictionary = {i:set() for i in optimal_drop_off}
     for home in homes:
-        minimum = 3 * 10 ** 11
+        minimum = 3 * 10 ** 15
         target = 0
         for drop in optimal_drop_off:
             if (shortest_path[drop][home] < minimum):
@@ -147,25 +125,27 @@ def runDescent1(homes, starting_location, shortest_path, initial_set, num_iterat
     counter = 0
     descentCounter = 0
     total = set(range(0, len(shortest_path)))
-    _, currCost = getTSP(shortest_path, result, starting_location, homes)
+    _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
     while (not isOver and counter < num_iterations):
         isOver = True
-        for drop in result: # Addition
-            result.remove(drop)
-            _, cost = getTSP(shortest_path, result, starting_location, homes)
-            if (cost < currCost):
-                isOver = False
-                currCost = cost
-                descentCounter += 1
-                break;
-            else:
-                result.add(drop)
-        if len(result) < len(homes): # Removable
+        if (len(result) > 1):
+            for drop in result:
+                if (len(result) > 1):
+                    result.remove(drop)
+                    _, cost = getTSPfast(shortest_path, result, starting_location, homes)
+                    if (cost <= currCost):
+                        isOver = False
+                        currCost = cost
+                        descentCounter += 1
+                        break;
+                    else:
+                        result.add(drop)
+        if len(result) < len(homes):
             setminus = total.difference(result)
             for toAdd in setminus:
                 result.add(toAdd)
-                _, cost = getTSP(shortest_path, result, starting_location, homes)
-                if (cost <= currCost):
+                _, cost = getTSPfast(shortest_path, result, starting_location, homes)
+                if (cost < currCost):
                     isOver = False
                     currCost = cost
                     descentCounter += 1
@@ -187,25 +167,26 @@ def runDescent12Mix(homes, starting_location, shortest_path, initial_set, num_it
     counter = 0
     descentCounter = 0
     total = set(range(0, len(shortest_path)))
-    _, currCost = getTSP(shortest_path, result, starting_location, homes)
+    _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
     while (not isOver and counter < num_iterations):
         isOver = True
-        for drop in result: # Addition
-            result.remove(drop)
-            _, cost = getTSP(shortest_path, result, starting_location, homes)
-            if (cost < currCost):
-                isOver = False
-                currCost = cost
-                descentCounter += 1
-                break;
-            else:
-                result.add(drop)
-        if len(result) < len(homes): # Removable
+        if (len(result) > 1):
+            for drop in result:
+                result.remove(drop)
+                _, cost = getTSPfast(shortest_path, result, starting_location, homes)
+                if (cost <= currCost):
+                    isOver = False
+                    currCost = cost
+                    descentCounter += 1
+                    break;
+                else:
+                    result.add(drop)
+        if len(result) < len(homes):
             setminus = total.difference(result)
             for toAdd in setminus:
                 result.add(toAdd)
-                _, cost = getTSP(shortest_path, result, starting_location, homes)
-                if (cost <= currCost):
+                _, cost = getTSPfast(shortest_path, result, starting_location, homes)
+                if (cost < currCost):
                     isOver = False
                     currCost = cost
                     descentCounter += 1
@@ -220,7 +201,7 @@ def runDescent12Mix(homes, starting_location, shortest_path, initial_set, num_it
         for toAdd in setminus:
             if (drop != toAdd):
                 result.add(toAdd)
-                _, cost = getTSP(shortest_path, result, starting_location, homes)
+                _, cost = getTSPfast(shortest_path, result, starting_location, homes)
                 if (cost < currCost):
                     isOver = False
                     currCost = cost
@@ -250,26 +231,27 @@ def runDescent2(homes, starting_location, shortest_path, initial_set, num_iterat
     counter = 0
     descentCounter = 0
     total = set(range(0, len(shortest_path)))
-    _, currCost = getTSP(shortest_path, result, starting_location, homes)
+    _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
     while (not isOver and counter < num_iterations):
         isOver = True
-        for drop in result: # Addition
-            result.remove(drop)
-            _, cost = getTSP(shortest_path, result, starting_location, homes)
-            if (cost < currCost):
-                isOver = False
-                currCost = cost
-                descentCounter += 1
-                break;
-            else:
-                result.add(drop)
+        if (len(result) > 1):
+            for drop in result:
+                result.remove(drop)
+                _, cost = getTSPfast(shortest_path, result, starting_location, homes)
+                if (cost <= currCost):
+                    isOver = False
+                    currCost = cost
+                    descentCounter += 1
+                    break;
+                else:
+                    result.add(drop)
         for drop in result: # Descent2
             result.remove(drop)
             setminus = total.difference(result)
             for toAdd in setminus:
                 if (drop != toAdd):
                     result.add(toAdd)
-                    _, cost = getTSP(shortest_path, result, starting_location, homes)
+                    _, cost = getTSPfast(shortest_path, result, starting_location, homes)
                     if (cost < currCost):
                         isOver = False
                         currCost = cost
@@ -281,12 +263,12 @@ def runDescent2(homes, starting_location, shortest_path, initial_set, num_iterat
             else:
                 continue
             break;
-        if len(result) < len(homes): # Removable
+        if len(result) < len(homes):
             setminus = total.difference(result)
             for toAdd in setminus:
                 result.add(toAdd)
-                _, cost = getTSP(shortest_path, result, starting_location, homes)
-                if (cost <= currCost):
+                _, cost = getTSPfast(shortest_path, result, starting_location, homes)
+                if (cost < currCost):
                     isOver = False
                     currCost = cost
                     descentCounter += 1
