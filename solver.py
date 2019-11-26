@@ -49,18 +49,20 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     finalDropOff = set()
 
     """
-    Descent2 takes very long time for 200.in case.
+    Descent2 takes very long time for 100.in and 200.in case.
     Descent1 is pretty fast for all three input types.
     """
-    if (len(list_of_locations) <= 100): # Descent2
+    print("0/3")
+    if (len(list_of_locations) <= 50): # Descent2
         finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent2, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
 
+    print("1/3")
     if (len(list_of_locations) <= 100): # Descent12Mix
         finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent12Mix, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
-
+    print("2/3")
     if (len(list_of_locations) <= 1000): # Descent1
         finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent1, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
-
+    print("3/3")
     finalDictionary = getDropOffs(shortestPath, finalDropOff, homes, list_of_locations)
 
     # Get rid of drop off locations with 0 TA

@@ -74,3 +74,48 @@ def getShortestPathBetween(adjacency_matrix, v1, v2):
         result += [previous[found]]
         found = previous[found]
     return result[::-1]
+
+def getShortestPathsBetween(adjacency_matrix, start, homes):
+    unVisited = set()
+    dist = [0] * len(adjacency_matrix)
+    previous = [-1] * len(adjacency_matrix)
+    for i in range(len(adjacency_matrix)):
+        if (i != start):
+            dist[i] = 3 * 10 ** 11
+        unVisited.add(i)
+    while (len(unVisited) != 0):
+        current = getArgminDist(dist, unVisited)
+        unVisited.remove(current)
+        toVisit = getAdjacentUnvisited(current, adjacency_matrix, unVisited)
+        for vertex in toVisit:
+            cost = dist[current] + adjacency_matrix[current][vertex]
+            if (cost < dist[vertex]):
+                dist[vertex] = cost
+                previous[vertex] = current
+    result = []
+    costs = []
+    for home in homes:
+        cost = 0
+        found = home
+        path = [home]
+        while (found != start):
+            path += [previous[found]]
+            found = previous[found]
+            cost += adjacency_matrix[found][previous[found]]
+        result += [path[::-1]]
+        costs += [cost]
+    return result, costs
+
+def getTwoAndFifthStations(adjacency_matrix, start, homes):
+    paths, costs = getShortestPathsBetween(adjacency_matrix, start, homes)
+    result = set()
+    for i in range(len(paths)):
+        path = paths[i]
+        cost = costs[i] * 2 / 5
+        currentCost = 0
+        for j in range(len(path) - 1):
+            currentCost += adjacency_matrix[path[j]][path[j + 1]]
+            if (currentCost >= cost):
+                result.add(path[j])
+                break;
+    return result
