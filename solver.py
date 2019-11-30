@@ -4,10 +4,12 @@ sys.path.append('..')
 sys.path.append('../..')
 import argparse
 import utils
+import time
 
 from shortest_path_algorithm import *
 from student_utils import *
 from approximate_TSP import *
+from epic_gamer_code import *
 import random
 """
 ======================================================================
@@ -18,7 +20,8 @@ import random
 def getCandidates(adjacency_matrix, shortest_path, homes, start):
     candidates = []
     candidates += [set(homes)]
-    # TODO
+    if len(adjacency_matrix) <= 100:
+        candidates += [set(getCandidate(adjacency_matrix, shortest_path, homes, start).keys())]
     return candidates
 
 def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_matrix, params=[]):
@@ -52,17 +55,10 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     Descent2 takes very long time for 100.in and 200.in case.
     Descent1 is pretty fast for all three input types.
     """
-    print("0/3")
-    if (len(list_of_locations) <= 50): # Descent2
-        finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent2, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
-
-    print("1/3")
-    if (len(list_of_locations) <= 100): # Descent12Mix
+    if (len(list_of_locations) <= 100): # Descent2
+        finalDropOff, finalPath, minimum = runDescent([dropOffCandidates[0]], runDescent2, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
+    if (len(list_of_locations) <= 200): # Descent12Mix
         finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent12Mix, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
-    print("2/3")
-    if (len(list_of_locations) <= 1000): # Descent1
-        finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent1, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
-    print("3/3")
     finalDictionary = getDropOffs(shortestPath, finalDropOff, homes, list_of_locations)
 
     # Get rid of drop off locations with 0 TA
@@ -78,7 +74,7 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
 
 def runDescent(candidates, descent_function, homes, start, shortestPath, minimum, optimalPath, optimalDropOff, num_iterations):
     for candidate in candidates:
-        getOptimalDropOff, counter, descentCounter = descent_function(homes, start, shortestPath, candidate, 3000)
+        getOptimalDropOff = descent_function(homes, start, shortestPath, candidate, 3000)
         generatePath, cost = getTSPfast(shortestPath, getOptimalDropOff, start, homes)
         # TODO
         # generatePath, cost = getTSPslow(shortestPath, getOptimalDropOff, start, homes)
@@ -122,39 +118,36 @@ def runDescent1(homes, starting_location, shortest_path, initial_set, num_iterat
     An iteration runs in O(n) * O(TSP).
     """
     result = set(initial_set)
-    isOver = False
     counter = 0
-    descentCounter = 0
     total = set(range(0, len(shortest_path)))
-    _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
-    while (not isOver and counter < num_iterations):
-        isOver = True
+    while (counter < num_iterations):
+        _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
+        nabla = 0
+        nabla_arg = set()
         if (len(result) > 1):
-            for drop in result:
+            for drop in list(result):
                 if (len(result) > 1):
                     result.remove(drop)
                     _, cost = getTSPfast(shortest_path, result, starting_location, homes)
-                    if (cost <= currCost):
-                        isOver = False
-                        currCost = cost
-                        descentCounter += 1
-                        break;
-                    else:
-                        result.add(drop)
+                    if (currCost - cost > nabla):
+                        nabla = currCost - cost
+                        nabla_arg = set(result)
+                    result.add(drop)
         if len(result) < len(homes):
             setminus = total.difference(result)
             for toAdd in setminus:
                 result.add(toAdd)
                 _, cost = getTSPfast(shortest_path, result, starting_location, homes)
-                if (cost < currCost):
-                    isOver = False
-                    currCost = cost
-                    descentCounter += 1
-                    break;
-                else:
-                    result.remove(toAdd)
+                if (currCost - cost > nabla):
+                    nabla = currCost - cost
+                    nabla_arg = set(result)
+                result.remove(toAdd)
+        if (nabla == 0):
+            break;
+        else:
+            result = nabla_arg
         counter += 1
-    return result, counter, descentCounter
+    return result
 
 def runDescent12Mix(homes, starting_location, shortest_path, initial_set, num_iterations):
     """
@@ -164,61 +157,53 @@ def runDescent12Mix(homes, starting_location, shortest_path, initial_set, num_it
     An iteration runs in O(n^2) * O(TSP) but is expected to perform faster than Descent2.
     """
     result = set(initial_set)
-    isOver = False
     counter = 0
-    descentCounter = 0
     total = set(range(0, len(shortest_path)))
-    _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
-    while (not isOver and counter < num_iterations):
-        isOver = True
+    while (counter < num_iterations):
+        _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
+        nabla = 0
+        nabla_arg = set()
         if (len(result) > 1):
-            for drop in result:
+            for drop in list(result):
                 result.remove(drop)
                 _, cost = getTSPfast(shortest_path, result, starting_location, homes)
-                if (cost <= currCost):
-                    isOver = False
-                    currCost = cost
-                    descentCounter += 1
-                    break;
-                else:
-                    result.add(drop)
+                if (currCost - cost > nabla):
+                    nabla = currCost - cost
+                    nabla_arg = set(result)
+                result.add(drop)
         if len(result) < len(homes):
             setminus = total.difference(result)
             for toAdd in setminus:
                 result.add(toAdd)
                 _, cost = getTSPfast(shortest_path, result, starting_location, homes)
-                if (cost < currCost):
-                    isOver = False
-                    currCost = cost
-                    descentCounter += 1
-                    break;
-                else:
-                    result.remove(toAdd)
+                if (currCost - cost > nabla):
+                    nabla = currCost - cost
+                    nabla_arg = set(result)
+                result.remove(toAdd)
+        if (nabla == 0):
+            break;
+        else:
+            result = nabla_arg
         counter += 1
-    isOver = True
-    for drop in result: # Descent2
+    nabla = 0
+    nabla_arg = set()
+    _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
+    for drop in list(result): # Descent2
         result.remove(drop)
         setminus = total.difference(result)
         for toAdd in setminus:
             if (drop != toAdd):
                 result.add(toAdd)
                 _, cost = getTSPfast(shortest_path, result, starting_location, homes)
-                if (cost < currCost):
-                    isOver = False
-                    currCost = cost
-                    descentCounter += 1
-                    break;
-                else:
-                    result.remove(toAdd)
-                    result.add(drop)
-        else:
-            continue
-        break;
-    if (not isOver):
-        a,b,c = runDescent12Mix(homes, starting_location, shortest_path, result, num_iterations)
-
-        return a, b + counter, c + descentCounter
-    return result, counter, descentCounter
+                if (currCost - cost > nabla):
+                    nabla = currCost - cost
+                    nabla_arg = set(result)
+                result.remove(toAdd)
+                result.add(drop)
+    if (nabla != 0):
+        a = runDescent12Mix(homes, starting_location, shortest_path, nabla_arg, num_iterations)
+        return a
+    return result
 
 def runDescent2(homes, starting_location, shortest_path, initial_set, num_iterations):
     """
@@ -228,56 +213,47 @@ def runDescent2(homes, starting_location, shortest_path, initial_set, num_iterat
     An iteration runs in O(n^2) * O(TSP).
     """
     result = set(initial_set)
-    isOver = False
     counter = 0
-    descentCounter = 0
     total = set(range(0, len(shortest_path)))
-    _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
-    while (not isOver and counter < num_iterations):
-        isOver = True
+    while (counter < num_iterations):
+        _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
+        nabla = 0
+        nabla_arg = set()
         if (len(result) > 1):
-            for drop in result:
+            for drop in list(result):
                 result.remove(drop)
                 _, cost = getTSPfast(shortest_path, result, starting_location, homes)
-                if (cost <= currCost):
-                    isOver = False
-                    currCost = cost
-                    descentCounter += 1
-                    break;
-                else:
-                    result.add(drop)
-        for drop in result: # Descent2
+                if (currCost - cost > nabla):
+                    nabla = currCost - cost
+                    nabla_arg = set(result)
+                result.add(drop)
+        for drop in list(result): # Descent2
             result.remove(drop)
             setminus = total.difference(result)
             for toAdd in setminus:
                 if (drop != toAdd):
                     result.add(toAdd)
                     _, cost = getTSPfast(shortest_path, result, starting_location, homes)
-                    if (cost < currCost):
-                        isOver = False
-                        currCost = cost
-                        descentCounter += 1
-                        break;
-                    else:
-                        result.remove(toAdd)
-                        result.add(drop)
-            else:
-                continue
-            break;
+                    if (currCost - cost > nabla):
+                        nabla = currCost - cost
+                        nabla_arg = set(result)
+                    result.remove(toAdd)
+                    result.add(drop)
         if len(result) < len(homes):
             setminus = total.difference(result)
             for toAdd in setminus:
                 result.add(toAdd)
                 _, cost = getTSPfast(shortest_path, result, starting_location, homes)
-                if (cost < currCost):
-                    isOver = False
-                    currCost = cost
-                    descentCounter += 1
-                    break;
-                else:
-                    result.remove(toAdd)
+                if (currCost - cost > nabla):
+                    nabla = currCost - cost
+                    nabla_arg = set(result)
+                result.remove(toAdd)
+        if (nabla == 0):
+            break;
+        else:
+            result = nabla_arg
         counter += 1
-    return result, counter, descentCounter
+    return result
 
 """
 ======================================================================
