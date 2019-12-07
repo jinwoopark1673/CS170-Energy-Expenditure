@@ -5,6 +5,8 @@ Alex Chan
 Jinwoo Park
 Brian Stone
 
+Please check spec.pdf for more detail about the project.
+
 Instructions to run the program:
 
 Make sure that numpy and networkx packages are installed to your version of Python.
