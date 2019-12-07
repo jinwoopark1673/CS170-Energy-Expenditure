@@ -19,10 +19,19 @@ import random
 
 def getCandidates(adjacency_matrix, shortest_path, homes, start):
     candidates = []
-    candidates += [set(homes)]
-    if len(adjacency_matrix) <= 100:
-        candidates += [set(getCandidate(adjacency_matrix, shortest_path, homes, start).keys())]
-    return candidates
+    if (len(adjacency_matrix) <= 50):
+        """
+        Test many set of random candidates and hope for the best.
+        """
+        for i in range(150):
+            candidates += [random.sample(range(len(adjacency_matrix)), len(homes))]
+        return candidates, True
+    else:
+        candidates += [set(homes)]
+        if len(adjacency_matrix) <= 100:
+            candidates += [set(getCandidate(adjacency_matrix, shortest_path, homes, start).keys())]
+        candidates += [random.sample(range(len(adjacency_matrix)), len(homes))]
+        return candidates, False
 
 def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_matrix, params=[]):
     """
@@ -45,7 +54,7 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     # getShortestDistanceMatrix is a helper function in shortest_path_algorithm.py
     shortestPath = getShortestDistanceMatrix(adjacency_matrix, len(list_of_locations))
 
-    dropOffCandidates = getCandidates(adjacency_matrix, shortestPath, homes, start)
+    dropOffCandidates, is50IN = getCandidates(adjacency_matrix, shortestPath, homes, start)
 
     minimum = 3 * 10 ** 15
     finalPath = []
@@ -55,10 +64,15 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     Descent2 takes very long time for 100.in and 200.in case.
     Descent1 is pretty fast for all three input types.
     """
-    if (len(list_of_locations) <= 100): # Descent2
-        finalDropOff, finalPath, minimum = runDescent([dropOffCandidates[0]], runDescent2, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
-    if (len(list_of_locations) <= 200): # Descent12Mix
-        finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent12Mix, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
+    if (is50IN):
+        # Descent12MixRandJump for 50.in case
+        finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent12MixRandJump, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
+    else:
+        if (len(list_of_locations) <= 100): # Descent2
+            finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent2, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
+        if (len(list_of_locations) <= 200): # Descent12Mix
+            finalDropOff, finalPath, minimum = runDescent(dropOffCandidates, runDescent12Mix, homes, start, shortestPath, minimum, finalPath, finalDropOff, 3000)
+
     finalDictionary = getDropOffs(shortestPath, finalDropOff, homes, list_of_locations)
 
     # Get rid of drop off locations with 0 TA
@@ -73,11 +87,13 @@ def solve(list_of_locations, list_of_homes, starting_car_location, adjacency_mat
     return path, finalDictionary
 
 def runDescent(candidates, descent_function, homes, start, shortestPath, minimum, optimalPath, optimalDropOff, num_iterations):
+    """
+    Helper function to get the optimal local-min drop-off locations
+    by applying the given descent function to the candidates.
+    """
     for candidate in candidates:
         getOptimalDropOff = descent_function(homes, start, shortestPath, candidate, 3000)
         generatePath, cost = getTSPfast(shortestPath, getOptimalDropOff, start, homes)
-        # TODO
-        # generatePath, cost = getTSPslow(shortestPath, getOptimalDropOff, start, homes)
         if (cost < minimum):
             minimum = cost
             optimalPath = generatePath
@@ -114,7 +130,7 @@ def runDescent1(homes, starting_location, shortest_path, initial_set, num_iterat
     """
     Run Descent1 algorithm on the given set of drop off locations.
     Descent1 checks whether removing or adding a vertex produce a better cost
-    and makes a descent until convergence.
+    and makes a steepest descent until convergence.
     An iteration runs in O(n) * O(TSP).
     """
     result = set(initial_set)
@@ -255,6 +271,55 @@ def runDescent2(homes, starting_location, shortest_path, initial_set, num_iterat
         counter += 1
     return result
 
+def runDescent12MixRandJump(homes, starting_location, shortest_path, initial_set, num_iterations):
+    """
+    Descent12Mix with random jump toward a negative slope direction.
+    """
+    result = set(initial_set)
+    counter = 0
+    total = set(range(0, len(shortest_path)))
+    isOver = False
+    while (not isOver and counter < num_iterations):
+        isOver = True
+        _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
+        if (len(result) > 1):
+            for drop in random.sample(list(result), len(result)):
+                result.remove(drop)
+                _, cost = getTSPfast(shortest_path, result, starting_location, homes)
+                if (currCost > cost):
+                    isOver = False
+                    break;
+                result.add(drop)
+        if len(result) < len(homes):
+            setminus = list(total.difference(result))
+            for toAdd in random.sample(setminus, len(setminus)):
+                result.add(toAdd)
+                _, cost = getTSPfast(shortest_path, result, starting_location, homes)
+                if (currCost > cost):
+                    isOver = False
+                    break;
+                result.remove(toAdd)
+        counter += 1
+    nabla = 0
+    nabla_arg = set()
+    _, currCost = getTSPfast(shortest_path, result, starting_location, homes)
+    for drop in list(result): # Descent2
+        result.remove(drop)
+        setminus = total.difference(result)
+        for toAdd in setminus:
+            if (drop != toAdd):
+                result.add(toAdd)
+                _, cost = getTSPfast(shortest_path, result, starting_location, homes)
+                if (currCost - cost > nabla):
+                    nabla = currCost - cost
+                    nabla_arg = set(result)
+                result.remove(toAdd)
+                result.add(drop)
+    if (nabla != 0):
+        a = runDescent12Mix(homes, starting_location, shortest_path, nabla_arg, num_iterations)
+        return a
+    return result
+
 """
 ======================================================================
    No need to change any code below this line
@@ -314,6 +379,7 @@ if __name__=="__main__":
     args = parser.parse_args()
     output_directory = args.output_directory
     if args.all:
+        print("Warning: It is gonna take a long time! Expect at least 10 minute for each run.")
         input_directory = args.input
         solve_all(input_directory, output_directory, params=args.params)
     else:

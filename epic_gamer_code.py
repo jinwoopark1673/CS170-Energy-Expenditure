@@ -29,8 +29,8 @@ def getCandidate(adj_matrix, dist_matrix, homes, start):
             edge_cost = (2 / 3) * adj_matrix[i][j] + dropoff_cost
             for k in range(num_layers - 1):
                 u, v = i + layer_size * k, j + layer_size * k
-                G.add_edge(u, v + layer_size, weight=edge_cost)
-                G.add_edge(v, u + layer_size, weight=edge_cost)
+                G.add_edge(u, v + layer_size, weight=abs(edge_cost))
+                G.add_edge(v, u + layer_size, weight=abs(edge_cost))
 
     pred, dist = nx.dijkstra_predecessor_and_distance(G, start)
 
