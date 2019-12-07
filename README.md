@@ -1,5 +1,5 @@
 # project-fa19
-CS 170 Fall 2019 Project
+CS 170 Fall 2019 Energy Expenditure Project
 
 Alex Chan
 Jinwoo Park
